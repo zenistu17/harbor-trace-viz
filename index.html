@@ -1717,7 +1717,18 @@
           while (retries > 0) {
             try {
               console.log(`Downloading ${item.path}...`);
-              const contentResponse = await fetch(item.download_url);
+
+              // Construct download URL manually to avoid duplication issues
+              // item.path is the full path from repo root
+              // We need: https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}
+              const downloadUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`;
+              console.log(`Download URL: ${downloadUrl}`);
+
+              const downloadHeaders = {
+                'Authorization': `Bearer ${token}`
+              };
+
+              const contentResponse = await fetch(downloadUrl, { headers: downloadHeaders });
 
               if (!contentResponse.ok) {
                 // Skip 404 errors - file doesn't exist
