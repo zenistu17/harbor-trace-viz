@@ -1686,6 +1686,73 @@
       return null;
     }
 
+    // Helper to download a single file with retry
+    async function downloadSingleFile(owner, repo, branch, item, token) {
+      let retries = 2;
+
+      while (retries > 0) {
+        try {
+          const apiDownloadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}?ref=${branch}`;
+
+          const contentResponse = await fetch(apiDownloadUrl, {
+            headers: {
+              'Accept': 'application/vnd.github.v3.raw',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!contentResponse.ok) {
+            if (contentResponse.status === 404) {
+              console.warn(`Skipping ${item.path} - not found (404)`);
+              return null;
+            }
+            throw new Error(`HTTP ${contentResponse.status}`);
+          }
+
+          const content = await contentResponse.text();
+          globalDownloadCount++;
+
+          // Get relative path from full-check folder
+          const pathParts = item.path.split('/');
+          const fullCheckIndex = pathParts.findIndex(p => p.startsWith('full-check-'));
+          const relativePath = fullCheckIndex >= 0
+            ? pathParts.slice(fullCheckIndex + 1).join('/')
+            : item.path;
+
+          // Update terminal log
+          if (window.terminalLog) {
+            window.terminalLog(`[↓] ${relativePath}`, 'download');
+          }
+
+          // Update loading progress
+          const loadingProgress = document.querySelector('.loading-progress');
+          if (loadingProgress) {
+            loadingProgress.textContent = `📊 ${globalDownloadCount} files downloaded`;
+          }
+
+          // Create a File-like object with proper path
+          const blob = new Blob([content], { type: 'text/plain' });
+          const file = new File([blob], item.name);
+
+          Object.defineProperty(file, 'webkitRelativePath', {
+            value: item.path,
+            writable: false,
+            enumerable: true
+          });
+
+          return file;
+        } catch (error) {
+          retries--;
+          if (retries === 0) {
+            console.error(`Skipping ${item.name} after retries: ${error.message}`);
+            return null;
+          }
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+      return null;
+    }
+
     async function downloadGitHubFolderWithBranch(owner, repo, branch, path, token) {
       // Recursively download folder contents from a specific branch
       const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
@@ -1702,114 +1769,46 @@
       }
 
       const items = await response.json();
-      const files = [];
+
+      // Separate files and directories
+      const fileItems = [];
+      const dirItems = [];
 
       for (const item of items) {
         if (item.type === 'file') {
-          // Only download files we actually need
           const isNeededFile =
             item.name === 'results.json' ||
             item.name === 'prompt.txt' ||
             item.name === 'response.txt' ||
             item.name === 'debug.json';
 
-          if (!isNeededFile) {
-            console.log(`Skipping ${item.name} (not needed)`);
-            continue;
+          if (isNeededFile) {
+            fileItems.push(item);
           }
-
-          // Download file content with retry
-          let retries = 3;
-          let content = null;
-          let shouldSkip = false;
-
-          while (retries > 0) {
-            try {
-              console.log(`Downloading ${item.path}...`);
-
-              // GitHub API provides download_url but we'll use API endpoint for better auth
-              // Convert to API endpoint format for consistent authentication
-              const apiDownloadUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${item.path}?ref=${branch}`;
-              console.log(`Downloading via API: ${item.path}`);
-
-              const contentResponse = await fetch(apiDownloadUrl, {
-                headers: {
-                  'Accept': 'application/vnd.github.v3.raw',
-                  'Authorization': `Bearer ${token}`
-                }
-              });
-
-              if (!contentResponse.ok) {
-                // Skip 404 errors - file doesn't exist
-                if (contentResponse.status === 404) {
-                  console.warn(`Skipping ${item.path} - not found (404)`);
-                  shouldSkip = true;
-                  break;
-                }
-                throw new Error(`HTTP ${contentResponse.status}`);
-              }
-
-              content = await contentResponse.text();
-              globalDownloadCount++;
-
-              // Get relative path from full-check folder
-              const pathParts = item.path.split('/');
-              const fullCheckIndex = pathParts.findIndex(p => p.startsWith('full-check-'));
-              const relativePath = fullCheckIndex >= 0
-                ? pathParts.slice(fullCheckIndex + 1).join('/')
-                : item.path;
-
-              // Update terminal log
-              if (window.terminalLog) {
-                window.terminalLog(`[↓] ${relativePath}`, 'download');
-              }
-
-              // Update loading progress
-              const loadingProgress = document.querySelector('.loading-progress');
-              if (loadingProgress) {
-                loadingProgress.textContent = `📊 ${globalDownloadCount} files downloaded`;
-              }
-
-              break; // Success, exit retry loop
-            } catch (error) {
-              retries--;
-              console.warn(`Failed to download ${item.path}, retries left: ${retries}`, error);
-              if (retries === 0) {
-                // Skip file instead of failing entire download
-                console.error(`Skipping ${item.name} after 3 attempts: ${error.message}`);
-                shouldSkip = true;
-                break;
-              }
-              // Wait before retry
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-
-          // Skip files that failed or don't exist
-          if (shouldSkip) {
-            continue;
-          }
-
-          // Create a File-like object with proper path
-          const blob = new Blob([content], { type: 'text/plain' });
-          const file = new File([blob], item.name);
-
-          // webkitRelativePath is read-only, so use Object.defineProperty
-          Object.defineProperty(file, 'webkitRelativePath', {
-            value: item.path,
-            writable: false,
-            enumerable: true
-          });
-
-          files.push(file);
-
-          // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 50));
         } else if (item.type === 'dir') {
-          // Recursively download directory
-          const subFiles = await downloadGitHubFolderWithBranch(owner, repo, branch, item.path, token);
-          files.push(...subFiles);
+          dirItems.push(item);
         }
+      }
+
+      // Download files in parallel batches of 15
+      const BATCH_SIZE = 15;
+      const files = [];
+
+      for (let i = 0; i < fileItems.length; i += BATCH_SIZE) {
+        const batch = fileItems.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(item => downloadSingleFile(owner, repo, branch, item, token))
+        );
+        files.push(...batchResults.filter(f => f !== null));
+      }
+
+      // Download directories recursively (in parallel batches)
+      for (let i = 0; i < dirItems.length; i += 5) {
+        const batch = dirItems.slice(i, i + 5);
+        const batchResults = await Promise.all(
+          batch.map(item => downloadGitHubFolderWithBranch(owner, repo, branch, item.path, token))
+        );
+        batchResults.forEach(subFiles => files.push(...subFiles));
       }
 
       return files;
