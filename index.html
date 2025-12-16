@@ -1,0 +1,3002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harbor Trace Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Global Reset */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-dark: #0a0118;
+      --bg-darker: #050010;
+      --glass-bg: rgba(255, 255, 255, 0.03);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-hover: rgba(255, 255, 255, 0.06);
+
+      --purple: #a855f7;
+      --purple-light: #c084fc;
+      --purple-dark: #7c3aed;
+      --blue: #3b82f6;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+
+      --text-primary: #ffffff;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+
+      --glow-purple: 0 0 40px rgba(168, 85, 247, 0.4);
+      --glow-blue: 0 0 40px rgba(59, 130, 246, 0.4);
+      --glow-cyan: 0 0 40px rgba(6, 182, 212, 0.4);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated Background */
+    .animated-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0a0118 0%, #1a0a2e 50%, #0a0118 100%);
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.3;
+      animation: float 20s infinite ease-in-out;
+    }
+
+    .orb1 {
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, #a855f7, transparent);
+      top: -200px;
+      left: -200px;
+      animation-delay: 0s;
+    }
+
+    .orb2 {
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, #3b82f6, transparent);
+      bottom: -150px;
+      right: -150px;
+      animation-delay: -10s;
+    }
+
+    .orb3 {
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, #06b6d4, transparent);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -5s;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translate(0, 0) scale(1);
+      }
+      33% {
+        transform: translate(100px, -100px) scale(1.1);
+      }
+      66% {
+        transform: translate(-100px, 100px) scale(0.9);
+      }
+    }
+
+    /* Container */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 4rem;
+      animation: fadeSlideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .header-title {
+      font-size: 5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #a855f7 0%, #3b82f6 50%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1rem;
+      letter-spacing: -0.03em;
+      text-shadow: 0 0 80px rgba(168, 85, 247, 0.3);
+      position: relative;
+      display: inline-block;
+    }
+
+    .header-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    @keyframes fadeSlideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Glass Card */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 2rem;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .glass-card:hover {
+      background: var(--glass-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-4px);
+    }
+
+    /* Upload Zone */
+    .upload-section {
+      animation: fadeSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+    }
+
+    .upload-zone {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 2px dashed var(--glass-border);
+      border-radius: 32px;
+      padding: 5rem 3rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-zone::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.1), transparent);
+      transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .upload-zone:hover {
+      border-color: var(--purple);
+      background: rgba(168, 85, 247, 0.05);
+      transform: translateY(-8px) scale(1.01);
+      box-shadow: var(--glow-purple);
+    }
+
+    .upload-zone:hover::before {
+      left: 100%;
+    }
+
+    .upload-icon {
+      font-size: 6rem;
+      margin-bottom: 2rem;
+      filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.5));
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .upload-text {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--purple-light), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .upload-hint {
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Loading */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 1, 24, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: fadeIn 0.3s;
+    }
+
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 2rem;
+      position: relative;
+    }
+
+    .loading-spinner::before,
+    .loading-spinner::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      inset: 0;
+    }
+
+    .loading-spinner::before {
+      border: 4px solid rgba(168, 85, 247, 0.2);
+      border-top-color: var(--purple);
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-spinner::after {
+      width: 60px;
+      height: 60px;
+      top: 10px;
+      left: 10px;
+      border: 4px solid rgba(6, 182, 212, 0.2);
+      border-top-color: var(--cyan);
+      animation: spin 1.5s linear infinite reverse;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .loading-text {
+      font-size: 1.5rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--purple-light), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Main Content */
+    .main-content {
+      display: none;
+      animation: fadeIn 0.6s;
+    }
+
+    .main-content.active {
+      display: block;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-bottom: 3rem;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      animation: fadeSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+    }
+
+    .toolbar-section {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .toolbar-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--purple-light);
+      margin-bottom: 0.75rem;
+    }
+
+    .trial-select,
+    .search-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      color: var(--text-primary);
+      font-size: 0.9375rem;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all 0.3s;
+    }
+
+    .trial-select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a855f7' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 3rem;
+    }
+
+    .trial-select:hover,
+    .search-input:hover {
+      border-color: var(--purple);
+      background: rgba(168, 85, 247, 0.08);
+    }
+
+    .trial-select:focus,
+    .search-input:focus {
+      outline: none;
+      border-color: var(--purple);
+      box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.2);
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-input {
+      padding-left: 3rem;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1.25rem;
+      top: 2.5rem;
+      font-size: 1.25rem;
+      pointer-events: none;
+    }
+
+    .search-filter {
+      margin-top: 0.75rem;
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .filter-chip:hover {
+      border-color: var(--purple);
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .filter-chip.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: white;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .stat-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 1.75rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.15s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.25s; }
+    .stat-card:nth-child(4) { animation-delay: 0.3s; }
+    .stat-card:nth-child(5) { animation-delay: 0.35s; }
+    .stat-card:nth-child(6) { animation-delay: 0.4s; }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--purple), var(--blue));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .stat-card:hover::before {
+      opacity: 1;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-6px) scale(1.02);
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px rgba(168, 85, 247, 0.2);
+    }
+
+    .stat-card.success::before {
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+    }
+
+    .stat-card.failure::before {
+      background: linear-gradient(90deg, var(--red), var(--yellow));
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value.success {
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .stat-value.failure {
+      background: linear-gradient(135deg, var(--red), var(--yellow));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .stat-sub {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    /* Episodes Timeline */
+    .episodes-section {
+      margin-bottom: 3rem;
+    }
+
+    .section-header {
+      margin-bottom: 2rem;
+      animation: fadeSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+    }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 6px;
+      height: 40px;
+      background: linear-gradient(180deg, var(--purple), var(--blue));
+      border-radius: 3px;
+      box-shadow: var(--glow-purple);
+    }
+
+    /* Episode Cards - Netflix Style */
+    .episodes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .episode-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 0;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      animation: fadeScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .episode-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+        rgba(168, 85, 247, 0.15), transparent 50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    .episode-card:hover::before {
+      opacity: 1;
+    }
+
+    .episode-card:hover {
+      transform: translateY(-12px) scale(1.03);
+      border-color: var(--purple);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4), var(--glow-purple);
+    }
+
+    @keyframes fadeScale {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .episode-header {
+      padding: 2rem 2rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .episode-number {
+      font-size: 1rem;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      padding: 0.75rem 1.25rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+      letter-spacing: 0.02em;
+    }
+
+    .episode-meta {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .episode-body {
+      padding: 1.5rem 2rem 2rem;
+    }
+
+    .episode-summary {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .episode-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .tag {
+      font-size: 0.75rem;
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--blue);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      transition: all 0.3s;
+    }
+
+    .tag:hover {
+      background: rgba(59, 130, 246, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .tag.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .tag.success:hover {
+      background: rgba(16, 185, 129, 0.25);
+    }
+
+    .tag.complete {
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      color: white;
+      border: none;
+      box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+    }
+
+    .tag.match {
+      background: linear-gradient(135deg, var(--yellow), var(--red));
+      color: white;
+      border: none;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+      animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
+      50% { box-shadow: 0 4px 25px rgba(245, 158, 11, 0.6); }
+    }
+
+    /* Detail Panel */
+    .detail-panel {
+      display: none;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      margin-bottom: 3rem;
+      overflow: hidden;
+      animation: expandPanel 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .detail-panel.active {
+      display: block;
+    }
+
+    @keyframes expandPanel {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2rem 2.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .detail-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .episode-timestamp {
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .close-btn {
+      background: linear-gradient(135deg, var(--red), #dc2626);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.75rem;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.9375rem;
+      transition: all 0.3s;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+    }
+
+    .close-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Episode Search Bar */
+    .episode-search-bar {
+      padding: 1.5rem 2.5rem;
+      background: rgba(255, 255, 255, 0.01);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .episode-search-box {
+      position: relative;
+      flex: 1;
+    }
+
+    .episode-search-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .match-count {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .nav-arrow {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 1rem;
+    }
+
+    .nav-arrow:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .nav-arrow:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .search-highlight {
+      background: rgba(6, 182, 212, 0.3);
+      border-radius: 3px;
+      padding: 0.125rem 0.25rem;
+    }
+
+    .search-highlight-current {
+      background: rgba(245, 158, 11, 0.5);
+      border-radius: 3px;
+      padding: 0.125rem 0.25rem;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+    }
+
+    .episode-search-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 0.875rem 1.25rem 0.875rem 3rem;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all 0.3s;
+    }
+
+    .episode-search-input:focus {
+      outline: none;
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
+    }
+
+    .episode-search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .episode-search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.125rem;
+      pointer-events: none;
+    }
+
+    .detail-content {
+      padding: 2.5rem;
+    }
+
+    .detail-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .detail-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-section h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      color: var(--purple-light);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .badge-count {
+      background: rgba(168, 85, 247, 0.2);
+      color: var(--purple-light);
+      padding: 0.25rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      font-weight: 700;
+    }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+    }
+
+    .code-block pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .commands-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .command-item {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--glass-border);
+      border-left: 4px solid var(--green);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .command-item:hover {
+      background: rgba(16, 185, 129, 0.05);
+      border-left-color: var(--cyan);
+    }
+
+    .command-item.single-line {
+      border-left: 4px solid var(--blue);
+    }
+
+    .command-item.single-line:hover {
+      border-left-color: var(--cyan);
+    }
+
+    .command-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .command-header.expandable {
+      cursor: pointer;
+    }
+
+    .command-header.expandable:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .command-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+    }
+
+    .command-number {
+      font-weight: 700;
+      color: var(--green);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+    }
+
+    .command-timestamp {
+      font-size: 0.75rem;
+      color: var(--cyan);
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(6, 182, 212, 0.1);
+      padding: 0.25rem 0.625rem;
+      border-radius: 6px;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .command-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    .command-text.preview {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .command-expand-icon {
+      font-size: 1rem;
+      color: var(--purple-light);
+      transition: transform 0.3s;
+    }
+
+    .command-expand-icon.expanded {
+      transform: rotate(180deg);
+    }
+
+    .command-full {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 0 1.25rem;
+    }
+
+    .command-full.expanded {
+      max-height: 3000px;
+      padding: 0 1.25rem 1.25rem;
+    }
+
+    .command-full pre {
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .completion-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      border-radius: 16px;
+      padding: 1.5rem;
+      color: var(--green);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      font-size: 1.125rem;
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+    }
+
+    /* Search Highlight */
+    .search-match {
+      background: rgba(245, 158, 11, 0.3);
+      color: var(--yellow);
+      padding: 0.125rem 0.25rem;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .match-indicator {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: rgba(6, 182, 212, 0.2);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: var(--cyan);
+      font-weight: 700;
+      margin-left: 0.5rem;
+    }
+
+    /* Collapsible Section */
+    .collapsible-container {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .collapsible-header {
+      padding: 1.25rem 1.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .collapsible-header:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .collapsible-title {
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .collapsible-toggle {
+      font-size: 1.25rem;
+      transition: transform 0.3s;
+    }
+
+    .collapsible-toggle.expanded {
+      transform: rotate(180deg);
+    }
+
+    .collapsible-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .collapsible-content.expanded {
+      max-height: 10000px;
+      padding: 1.5rem;
+    }
+
+    /* Test Results */
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .test-item {
+      padding: 1rem 1.5rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s;
+      border-left: 3px solid;
+      gap: 1rem;
+    }
+
+    .test-item:hover {
+      transform: translateX(6px);
+    }
+
+    .test-item.passed {
+      background: rgba(16, 185, 129, 0.1);
+      border-left-color: var(--green);
+    }
+
+    .test-item.failed {
+      background: rgba(239, 68, 68, 0.1);
+      border-left-color: var(--red);
+    }
+
+    .test-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .test-status {
+      font-weight: 800;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .test-item.passed .test-status {
+      color: var(--green);
+    }
+
+    .test-item.failed .test-status {
+      color: var(--red);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 16px;
+      border: 1px dashed var(--glass-border);
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      opacity: 0.5;
+      margin-bottom: 1.5rem;
+      filter: grayscale(1);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-darker);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--purple), var(--blue));
+      border-radius: 6px;
+      border: 2px solid var(--bg-darker);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, var(--purple-light), var(--cyan));
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header-title {
+        font-size: 3rem;
+      }
+
+      .episodes-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+
+      .test-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="animated-bg">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="header-title">Harbor Traces</h1>
+      <p class="header-subtitle">Visualize agent execution with crystal clarity</p>
+    </header>
+
+    <!-- Upload Section -->
+    <div id="uploadSection" class="upload-section">
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">⚡</div>
+        <div class="upload-text">Drop Harbor Trace Folder</div>
+        <p class="upload-hint">
+          Upload full-check-2025-XX-XX__XX-XX-XX folder or load from GitHub
+        </p>
+        <input type="file" id="fileInput" webkitdirectory directory multiple>
+      </div>
+
+      <div style="text-align: center; margin-top: 2rem; color: var(--text-muted);">
+        — OR —
+      </div>
+
+      <div style="max-width: 600px; margin: 2rem auto;">
+        <div class="glass-card" style="padding: 2rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--purple-light);">Load from GitHub</h3>
+          <input
+            type="text"
+            id="githubPathInput"
+            placeholder="Enter PR URL (e.g., github.com/org/repo/pull/123)"
+            style="width: 100%; padding: 0.875rem 1.25rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-primary); font-size: 0.875rem; font-family: 'JetBrains Mono', monospace; margin-bottom: 1rem;"
+          >
+          <input
+            type="password"
+            id="githubTokenInput"
+            placeholder="GitHub token (saved in browser)"
+            style="width: 100%; padding: 0.875rem 1.25rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-primary); font-size: 0.875rem; font-family: 'JetBrains Mono', monospace; margin-bottom: 1rem;"
+          >
+          <button
+            id="loadFromGithubBtn"
+            style="width: 100%; padding: 0.875rem 1.75rem; background: linear-gradient(135deg, var(--purple) 0%, var(--blue) 100%); border: none; border-radius: 12px; color: white; font-weight: 700; font-size: 0.9375rem; cursor: pointer; transition: all 0.3s;"
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 30px rgba(168, 85, 247, 0.4)'"
+            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 20px rgba(168, 85, 247, 0.3)'"
+          >
+            Load from GitHub
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="main-content">
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-section">
+          <label class="toolbar-label">Trial</label>
+          <select id="trialSelect" class="trial-select"></select>
+        </div>
+
+        <div class="toolbar-section search-box">
+          <label class="toolbar-label">Search</label>
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            class="search-input"
+            id="searchInput"
+            placeholder="Search commands..."
+          >
+          <div class="search-filter">
+            <div class="filter-chip active" data-filter="all">All</div>
+            <div class="filter-chip" data-filter="commands">Commands Only</div>
+            <div class="filter-chip" data-filter="complete">Completed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div id="statsGrid" class="stats-grid"></div>
+
+      <!-- Detail Panel -->
+      <div id="detailPanel" class="detail-panel"></div>
+
+      <!-- Episodes Section -->
+      <div class="episodes-section">
+        <div class="section-header">
+          <h2 class="section-title">Episodes Timeline</h2>
+        </div>
+        <div id="episodesGrid" class="episodes-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    console.log('[TRACE] Script starting...');
+
+    // Global State
+    let allTrials = [];
+    let currentTrial = null;
+    let searchQuery = '';
+    let searchFilter = 'all';
+    let episodeSearchQuery = '';
+    let currentMatchIndex = 0;
+    let totalMatches = 0;
+    let matchElements = [];
+    let githubToken = '';
+    let globalDownloadCount = 0;
+
+    try {
+      githubToken = localStorage.getItem('github_token') || '';
+      console.log('[TRACE] localStorage access successful');
+    } catch (e) {
+      console.error('[ERROR] localStorage access failed:', e);
+    }
+
+    // DOM Elements
+    console.log('[TRACE] Getting DOM elements...');
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadSection = document.getElementById('uploadSection');
+    const mainContent = document.getElementById('mainContent');
+    const trialSelect = document.getElementById('trialSelect');
+    const searchInput = document.getElementById('searchInput');
+    const statsGrid = document.getElementById('statsGrid');
+    const episodesGrid = document.getElementById('episodesGrid');
+    const detailPanel = document.getElementById('detailPanel');
+
+    console.log('[TRACE] DOM elements:', {
+      uploadZone: !!uploadZone,
+      fileInput: !!fileInput,
+      uploadSection: !!uploadSection,
+      mainContent: !!mainContent,
+      trialSelect: !!trialSelect,
+      searchInput: !!searchInput,
+      statsGrid: !!statsGrid,
+      episodesGrid: !!episodesGrid,
+      detailPanel: !!detailPanel
+    });
+
+    // Event Listeners
+    console.log('[TRACE] Attaching event listeners...');
+    try {
+      uploadZone.addEventListener('click', () => fileInput.click());
+      console.log('[TRACE] uploadZone click listener attached');
+    } catch (e) {
+      console.error('[ERROR] Failed to attach uploadZone listener:', e);
+    }
+
+    try {
+      fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) handleFiles(files);
+      });
+      console.log('[TRACE] fileInput listener attached');
+    } catch (e) {
+      console.error('[ERROR] Failed to attach fileInput listener:', e);
+    }
+
+    try {
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase();
+        renderEpisodes();
+      });
+      console.log('[TRACE] searchInput listener attached');
+    } catch (e) {
+      console.error('[ERROR] Failed to attach searchInput listener:', e);
+    }
+
+    try {
+      trialSelect.addEventListener('change', () => {
+        selectTrial(parseInt(trialSelect.value));
+      });
+      console.log('[TRACE] trialSelect listener attached');
+    } catch (e) {
+      console.error('[ERROR] Failed to attach trialSelect listener:', e);
+    }
+
+    // Filter chips
+    try {
+      document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          searchFilter = chip.dataset.filter;
+          renderEpisodes();
+        });
+      });
+      console.log('[TRACE] filter chip listeners attached');
+    } catch (e) {
+      console.error('[ERROR] Failed to attach filter chip listeners:', e);
+    }
+
+    // GitHub Integration
+    async function fetchFromGitHub(repoPath, token) {
+      // repoPath format: "owner/repo/path/to/folder" or full GitHub URL
+      const cleanPath = repoPath
+        .replace('https://github.com/', '')
+        .replace('/tree/', '/')
+        .replace('/blob/', '/')
+        .split('?')[0];
+
+      const parts = cleanPath.split('/');
+      const owner = parts[0];
+      const repo = parts[1];
+      const branch = parts[2] || 'main';
+      const path = parts.slice(3).join('/');
+
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+
+      const headers = {
+        'Accept': 'application/vnd.github.v3+json'
+      };
+
+      if (token) {
+        headers['Authorization'] = `token ${token}`;
+      }
+
+      const response = await fetch(apiUrl, { headers });
+
+      if (!response.ok) {
+        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    }
+
+    async function fetchPRComments(prUrl, token) {
+      // Extract owner, repo, PR number from URL
+      // https://github.com/owner/repo/pull/123
+      const match = prUrl.match(/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/);
+      if (!match) {
+        throw new Error('Invalid PR URL format');
+      }
+
+      const [, owner, repo, prNumber] = match;
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`;
+
+      const headers = {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `Bearer ${token}`
+      };
+
+      const response = await fetch(apiUrl, { headers });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Invalid GitHub token. Please generate a new token with "repo" scope at: https://github.com/settings/tokens');
+        }
+        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    }
+
+    function extractArtifactsPath(comments) {
+      // Find the bot comment with artifacts link
+      for (const comment of comments) {
+        const body = comment.body;
+        // Look for the markdown link with job-artifacts URL
+        // Pattern: [View artifacts](https://github.com/.../tree/job-artifacts/job-artifacts/{JOB_ID})
+        const match = body.match(/\[.*artifacts.*\]\(https:\/\/github\.com\/[^\/]+\/[^\/]+\/tree\/job-artifacts\/job-artifacts\/(job-[^\)]+)\)/i);
+        if (match) {
+          console.log('Extracted job ID from markdown link:', match[1]);
+          return match[1];
+        }
+
+        // Fallback: Try to find job ID in plain text
+        const plainMatch = body.match(/job-artifacts\/(job-\d+-[a-zA-Z0-9\-]+)/);
+        if (plainMatch) {
+          console.log('Extracted job ID from plain text:', plainMatch[1]);
+          return plainMatch[1];
+        }
+      }
+      return null;
+    }
+
+    async function downloadGitHubFolder(owner, repo, path, token) {
+      // Recursively download folder contents
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+      const headers = {
+        'Accept': 'application/vnd.github.v3+json'
+      };
+
+      if (token) {
+        headers['Authorization'] = `token ${token}`;
+      }
+
+      const response = await fetch(apiUrl, { headers });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${path}: ${response.status}`);
+      }
+
+      const items = await response.json();
+      const files = [];
+
+      for (const item of items) {
+        if (item.type === 'file') {
+          // Download file content
+          const contentResponse = await fetch(item.download_url);
+          const content = await contentResponse.text();
+
+          // Create a File-like object with proper path
+          const blob = new Blob([content], { type: 'text/plain' });
+          const file = new File([blob], item.name);
+
+          // webkitRelativePath is read-only, so use Object.defineProperty
+          Object.defineProperty(file, 'webkitRelativePath', {
+            value: item.path,
+            writable: false,
+            enumerable: true
+          });
+
+          files.push(file);
+        } else if (item.type === 'dir') {
+          // Recursively download directory
+          const subFiles = await downloadGitHubFolder(owner, repo, item.path, token);
+          files.push(...subFiles);
+        }
+      }
+
+      return files;
+    }
+
+    async function loadFromGitHubPath(input, token) {
+      showLoading();
+      globalDownloadCount = 0; // Reset download counter
+
+      try {
+        if (!token || token.trim().length === 0) {
+          throw new Error('GitHub token is required. Please enter your token and try again.');
+        }
+
+        let owner, repo, branch, path;
+
+        // Check if it's a PR URL
+        if (input.includes('/pull/')) {
+          console.log('Detected PR URL, fetching comments...');
+
+          // Fetch PR comments to get artifacts link
+          const comments = await fetchPRComments(input, token);
+          const artifactsUrl = extractArtifactsUrl(comments);
+
+          if (!artifactsUrl) {
+            throw new Error('Could not find artifacts link in PR comments. Make sure the full-check bot has posted results.');
+          }
+
+          console.log(`Found artifacts URL: ${artifactsUrl}`);
+
+          // Now parse the artifacts URL
+          input = artifactsUrl;
+        }
+
+        // Parse GitHub URL (either from PR comment or directly pasted)
+        // Format: https://github.com/owner/repo/tree/branch/path/to/folder
+        const urlMatch = input.match(/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)\/(.+)/);
+
+        if (!urlMatch) {
+          throw new Error('Invalid GitHub URL format. Expected: https://github.com/owner/repo/tree/branch/path');
+        }
+
+        owner = urlMatch[1];
+        repo = urlMatch[2];
+        branch = urlMatch[3];
+        let pathPart = urlMatch[4];
+
+        console.log(`Parsed: owner=${owner}, repo=${repo}, branch=${branch}, path=${pathPart}`);
+
+        // List contents to find full-check folder
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${pathPart}?ref=${branch}`;
+        console.log(`Fetching: ${apiUrl}`);
+
+        const headers = {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': `Bearer ${token}`
+        };
+
+        const response = await fetch(apiUrl, { headers });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('GitHub authentication failed. Please check your token has "repo" scope and regenerate if needed.');
+          }
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+
+        const items = await response.json();
+        console.log(`Found ${items.length} items in ${pathPart}`);
+
+        // Find the full-check-* folder
+        const fullCheckFolder = items.find(item =>
+          item.type === 'dir' && item.name.startsWith('full-check-')
+        );
+
+        if (!fullCheckFolder) {
+          if (pathPart.includes('full-check-')) {
+            path = pathPart;
+            console.log(`Already in full-check folder: ${path}`);
+          } else {
+            throw new Error(`No full-check folder found. Found: ${items.map(i => i.name).join(', ')}`);
+          }
+        } else {
+          path = `${pathPart}/${fullCheckFolder.name}`;
+          console.log(`Found full-check folder: ${fullCheckFolder.name}`);
+        }
+
+        console.log(`Downloading from: ${owner}/${repo}/${branch}/${path}`);
+
+        // Download the full-check folder
+        const files = await downloadGitHubFolderWithBranch(owner, repo, branch, path, token);
+
+        if (files.length === 0) {
+          throw new Error('No files found');
+        }
+
+        console.log(`Downloaded ${files.length} files`);
+        await handleFiles(files);
+      } catch (error) {
+        hideLoading();
+        alert(`Error: ${error.message}`);
+        console.error(error);
+      }
+    }
+
+    function extractArtifactsUrl(comments) {
+      for (const comment of comments) {
+        const body = comment.body;
+        // Find markdown link: [View artifacts](URL)
+        const match = body.match(/\[.*?artifacts.*?\]\((https:\/\/github\.com\/[^\)]+)\)/i);
+        if (match) {
+          return match[1];
+        }
+      }
+      return null;
+    }
+
+    async function downloadGitHubFolderWithBranch(owner, repo, branch, path, token) {
+      // Recursively download folder contents from a specific branch
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+
+      const headers = {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `Bearer ${token}`
+      };
+
+      const response = await fetch(apiUrl, { headers });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${path}: ${response.status}`);
+      }
+
+      const items = await response.json();
+      const files = [];
+
+      for (const item of items) {
+        if (item.type === 'file') {
+          // Only download files we actually need
+          const isNeededFile =
+            item.name === 'results.json' ||
+            item.name === 'prompt.txt' ||
+            item.name === 'response.txt' ||
+            item.name === 'debug.json';
+
+          if (!isNeededFile) {
+            console.log(`Skipping ${item.name} (not needed)`);
+            continue;
+          }
+
+          // Download file content with retry
+          let retries = 3;
+          let content = null;
+          let shouldSkip = false;
+
+          while (retries > 0) {
+            try {
+              console.log(`Downloading ${item.path}...`);
+              const contentResponse = await fetch(item.download_url);
+
+              if (!contentResponse.ok) {
+                // Skip 404 errors - file doesn't exist
+                if (contentResponse.status === 404) {
+                  console.warn(`Skipping ${item.path} - not found (404)`);
+                  shouldSkip = true;
+                  break;
+                }
+                throw new Error(`HTTP ${contentResponse.status}`);
+              }
+
+              content = await contentResponse.text();
+              globalDownloadCount++;
+
+              // Update loading progress
+              const loadingProgress = document.querySelector('.loading-progress');
+              if (loadingProgress) {
+                loadingProgress.textContent = `${globalDownloadCount} files downloaded`;
+              }
+
+              break; // Success, exit retry loop
+            } catch (error) {
+              retries--;
+              console.warn(`Failed to download ${item.path}, retries left: ${retries}`, error);
+              if (retries === 0) {
+                // Skip file instead of failing entire download
+                console.error(`Skipping ${item.name} after 3 attempts: ${error.message}`);
+                shouldSkip = true;
+                break;
+              }
+              // Wait before retry
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+
+          // Skip files that failed or don't exist
+          if (shouldSkip) {
+            continue;
+          }
+
+          // Create a File-like object with proper path
+          const blob = new Blob([content], { type: 'text/plain' });
+          const file = new File([blob], item.name);
+
+          // webkitRelativePath is read-only, so use Object.defineProperty
+          Object.defineProperty(file, 'webkitRelativePath', {
+            value: item.path,
+            writable: false,
+            enumerable: true
+          });
+
+          files.push(file);
+
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 50));
+        } else if (item.type === 'dir') {
+          // Recursively download directory
+          const subFiles = await downloadGitHubFolderWithBranch(owner, repo, branch, item.path, token);
+          files.push(...subFiles);
+        }
+      }
+
+      return files;
+    }
+
+    // Initialize GitHub inputs
+    console.log('[TRACE] Initializing GitHub inputs...');
+    const githubPathInput = document.getElementById('githubPathInput');
+    const githubTokenInput = document.getElementById('githubTokenInput');
+    const loadFromGithubBtn = document.getElementById('loadFromGithubBtn');
+
+    console.log('[TRACE] GitHub elements:', {
+      githubPathInput: !!githubPathInput,
+      githubTokenInput: !!githubTokenInput,
+      loadFromGithubBtn: !!loadFromGithubBtn
+    });
+
+    // Load saved token
+    if (githubToken && githubTokenInput) {
+      githubTokenInput.value = githubToken;
+      console.log('[TRACE] Token loaded from storage');
+    }
+
+    if (loadFromGithubBtn) {
+      try {
+        loadFromGithubBtn.addEventListener('click', async () => {
+          console.log('[TRACE] GitHub button clicked');
+          const path = githubPathInput.value.trim();
+          const token = githubTokenInput.value.trim();
+
+          if (!path) {
+            alert('Please enter a GitHub path or PR URL');
+            return;
+          }
+
+          if (token) {
+            try {
+              localStorage.setItem('github_token', token);
+              githubToken = token;
+            } catch (e) {
+              console.error('[ERROR] Failed to save token:', e);
+            }
+          }
+
+          await loadFromGitHubPath(path, token);
+        });
+        console.log('[TRACE] GitHub button listener attached');
+      } catch (e) {
+        console.error('[ERROR] Failed to attach GitHub button listener:', e);
+      }
+    } else {
+      console.error('[ERROR] loadFromGithubBtn not found!');
+    }
+
+    // Check for URL parameters on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const ghPath = urlParams.get('gh') || urlParams.get('github') || urlParams.get('path');
+
+      if (ghPath) {
+        githubPathInput.value = ghPath;
+
+        // Auto-load if token is available
+        if (githubToken) {
+          loadFromGitHubPath(ghPath, githubToken);
+        }
+      }
+    });
+
+    // File Handling
+    async function handleFiles(files) {
+      showLoading();
+
+      console.log(`[HANDLE] Processing ${files.length} files`);
+
+      // Debug: show sample file paths
+      const resultsFiles = files.filter(f => f.name === 'results.json');
+      console.log(`[HANDLE] Found ${resultsFiles.length} results.json files:`);
+      resultsFiles.slice(0, 3).forEach(f => {
+        console.log(`  - ${f.webkitRelativePath}`);
+        console.log(`    Matches tb-run pattern:`, /\.tb-run-(small|large)/.test(f.webkitRelativePath));
+      });
+
+      // Only include tb-run-small and tb-run-large (removed oracle and nop)
+      const trialFiles = files.filter(f =>
+        f.name === 'results.json' &&
+        f.webkitRelativePath.match(/\.tb-run-(small|large)/)
+      );
+
+      console.log(`[HANDLE] Filtered to ${trialFiles.length} trial files`);
+
+      const trialPromises = trialFiles.map(async (file, idx) => {
+        const path = file.webkitRelativePath;
+        const pathParts = path.split('/');
+        const trialName = pathParts[pathParts.length - 2];
+        const trialPath = pathParts.slice(0, -1).join('/');
+
+        console.log(`[TRIAL ${idx + 1}/${trialFiles.length}] Processing: ${trialName}`);
+        console.log(`  Path: ${trialPath}`);
+
+        try {
+          const resultsText = await file.text();
+          const results = JSON.parse(resultsText);
+          console.log(`  ✓ Parsed results.json`);
+
+          const episodeFiles = files.filter(f =>
+            f.webkitRelativePath.startsWith(trialPath) &&
+            f.webkitRelativePath.includes('agent-logs/episode-')
+          );
+
+          console.log(`  Found ${episodeFiles.length} episode files`);
+
+          const episodeMap = {};
+          episodeFiles.forEach(f => {
+            const epMatch = f.webkitRelativePath.match(/episode-(\d+)/);
+            if (epMatch) {
+              const epNum = parseInt(epMatch[1]);
+              if (!episodeMap[epNum]) episodeMap[epNum] = [];
+              episodeMap[epNum].push(f);
+            }
+          });
+
+          const episodes = await Promise.all(
+            Object.keys(episodeMap).sort((a, b) => parseInt(a) - parseInt(b)).map(async (epNum) => {
+              const epFiles = episodeMap[epNum];
+              const promptFile = epFiles.find(f => f.name === 'prompt.txt');
+              const responseFile = epFiles.find(f => f.name === 'response.txt');
+              const debugFile = epFiles.find(f => f.name === 'debug.json');
+
+              let prompt = '';
+              let response = '';
+              let commands = [];
+              let taskComplete = false;
+              let timestamp = null;
+
+              if (promptFile) prompt = await promptFile.text();
+
+              // Get timestamp from debug.json if available
+              if (debugFile) {
+                try {
+                  const debugText = await debugFile.text();
+                  const debugData = JSON.parse(debugText);
+                  timestamp = debugData.start_time || debugData.timestamp || debugData.started_at || null;
+                } catch (e) {}
+              }
+
+              if (responseFile) {
+                response = await responseFile.text();
+                try {
+                  const jsonMatch = response.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    taskComplete = parsed.task_complete || false;
+                    if (parsed.commands && Array.isArray(parsed.commands)) {
+                      // Calculate command timestamps from episode start_time + cumulative duration
+                      let cumulativeTime = 0;
+                      const episodeStartTime = timestamp ? new Date(timestamp) : null;
+
+                      commands = parsed.commands.map(cmd => {
+                        let cmdTimestamp = cmd.timestamp || null;
+
+                        // If command doesn't have timestamp but we have episode start time, calculate it
+                        if (!cmdTimestamp && episodeStartTime && cmd.duration !== undefined) {
+                          const cmdTime = new Date(episodeStartTime.getTime() + cumulativeTime * 1000);
+                          cmdTimestamp = cmdTime.toISOString();
+                          cumulativeTime += (cmd.duration || 0);
+                        }
+
+                        return {
+                          text: cmd.keystrokes || '',
+                          timestamp: cmdTimestamp
+                        };
+                      });
+                    }
+                  }
+                } catch (e) {}
+              }
+
+              return {
+                number: parseInt(epNum),
+                prompt,
+                response,
+                commands,
+                taskComplete,
+                timestamp
+              };
+            })
+          );
+
+          const trial = {
+            name: trialName,
+            path: trialPath,
+            results,
+            episodes: episodes.filter(ep => ep)
+          };
+          console.log(`  ✓ Created trial with ${trial.episodes.length} episodes`);
+          return trial;
+        } catch (error) {
+          console.error(`  ✗ Error parsing trial:`, error);
+          return null;
+        }
+      });
+
+      console.log('[HANDLE] Waiting for all trial promises...');
+      allTrials = (await Promise.all(trialPromises)).filter(t => t);
+      console.log(`[HANDLE] Finished processing. Got ${allTrials.length} valid trials`);
+
+      console.log('[HANDLE] About to call hideLoading()...');
+      hideLoading();
+      console.log('[HANDLE] hideLoading() returned');
+
+      if (allTrials.length === 0) {
+        alert('No valid trials found. Please upload a Harbor trace folder.');
+        return;
+      }
+
+      console.log('[HANDLE] Showing main content...');
+
+      try {
+        console.log('[RENDER] Calling renderTrialSelector()...');
+        renderTrialSelector();
+        console.log('[RENDER] ✓ renderTrialSelector() complete');
+
+        console.log('[RENDER] Calling showMainContent()...');
+        showMainContent();
+        console.log('[RENDER] ✓ showMainContent() complete');
+      } catch (error) {
+        console.error('[RENDER] ✗ Error during rendering:', error);
+        alert(`Rendering error: ${error.message}`);
+      }
+    }
+
+    function renderTrialSelector() {
+      console.log('[SELECTOR] Rendering trial selector for', allTrials.length, 'trials');
+      trialSelect.innerHTML = '';
+      allTrials.forEach((trial, idx) => {
+        const option = document.createElement('option');
+        option.value = idx;
+        const status = trial.results.is_resolved ? '✅' : '❌';
+        option.textContent = `${status} ${trial.name}`;
+        trialSelect.appendChild(option);
+        console.log(`  [${idx}] ${option.textContent}`);
+      });
+      console.log('[SELECTOR] Selecting trial 0...');
+      selectTrial(0);
+    }
+
+    function selectTrial(index) {
+      console.log('[SELECT] Selecting trial', index);
+      currentTrial = allTrials[index];
+      console.log('[SELECT] Current trial:', currentTrial.name, 'with', currentTrial.episodes.length, 'episodes');
+
+      console.log('[SELECT] Calling renderStats()...');
+      renderStats();
+
+      console.log('[SELECT] Calling renderEpisodes()...');
+      renderEpisodes();
+
+      detailPanel.classList.remove('active');
+      console.log('[SELECT] ✓ Trial selection complete');
+    }
+
+    function renderStats() {
+      const r = currentTrial.results;
+      const passedTests = Object.values(r.parser_results).filter(v => v === 'passed').length;
+      const totalTests = Object.keys(r.parser_results).length;
+      const passRate = ((passedTests / totalTests) * 100).toFixed(1);
+      const agentDuration = new Date(r.agent_ended_at) - new Date(r.agent_started_at);
+      const agentSeconds = (agentDuration / 1000).toFixed(1);
+
+      statsGrid.innerHTML = `
+        <div class="stat-card ${r.is_resolved ? 'success' : 'failure'}">
+          <div class="stat-label">Status</div>
+          <div class="stat-value ${r.is_resolved ? 'success' : 'failure'}">
+            ${r.is_resolved ? '✅ Passed' : '❌ Failed'}
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tests</div>
+          <div class="stat-value">${passedTests}/${totalTests}</div>
+          <div class="stat-sub">${passRate}% pass rate</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Input Tokens</div>
+          <div class="stat-value">${(r.total_input_tokens / 1000).toFixed(1)}K</div>
+          <div class="stat-sub">${r.total_input_tokens.toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Output Tokens</div>
+          <div class="stat-value">${(r.total_output_tokens / 1000).toFixed(1)}K</div>
+          <div class="stat-sub">${r.total_output_tokens.toLocaleString()}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Runtime</div>
+          <div class="stat-value">${agentSeconds}s</div>
+          <div class="stat-sub">${currentTrial.episodes.length} episodes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Commands</div>
+          <div class="stat-value">${r.n_commands}</div>
+        </div>
+      `;
+    }
+
+    function highlightMatch(text, query) {
+      if (!query) return escapeHtml(text);
+      const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+      return escapeHtml(text).replace(regex, '<span class="search-highlight">$1</span>');
+    }
+
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function findMatches(episode, query) {
+      const matches = [];
+
+      // Check commands
+      episode.commands.forEach((cmd, idx) => {
+        if (cmd.text.toLowerCase().includes(query)) {
+          matches.push({ type: 'command', index: idx + 1 });
+        }
+      });
+
+      // Check prompt
+      if (episode.prompt.toLowerCase().includes(query)) {
+        matches.push({ type: 'prompt' });
+      }
+
+      // Check response
+      if (episode.response.toLowerCase().includes(query)) {
+        matches.push({ type: 'response' });
+      }
+
+      return matches;
+    }
+
+    function renderEpisodes() {
+      episodesGrid.innerHTML = '';
+
+      let episodes = currentTrial.episodes;
+      const matchedEpisodes = [];
+
+      // Apply filters
+      if (searchFilter === 'commands') {
+        if (searchQuery) {
+          episodes.forEach(ep => {
+            if (ep.commands.some(cmd => cmd.text.toLowerCase().includes(searchQuery))) {
+              matchedEpisodes.push({
+                episode: ep,
+                matches: findMatches(ep, searchQuery)
+              });
+            }
+          });
+        } else {
+          episodes.forEach(ep => {
+            if (ep.commands.length > 0) {
+              matchedEpisodes.push({ episode: ep, matches: [] });
+            }
+          });
+        }
+      } else if (searchFilter === 'complete') {
+        episodes.forEach(ep => {
+          if (ep.taskComplete) {
+            const matches = searchQuery ? findMatches(ep, searchQuery) : [];
+            matchedEpisodes.push({ episode: ep, matches });
+          }
+        });
+      } else {
+        // 'all' filter
+        episodes.forEach(ep => {
+          if (searchQuery) {
+            const matches = findMatches(ep, searchQuery);
+            if (matches.length > 0) {
+              matchedEpisodes.push({ episode: ep, matches });
+            }
+          } else {
+            matchedEpisodes.push({ episode: ep, matches: [] });
+          }
+        });
+      }
+
+      if (matchedEpisodes.length === 0) {
+        episodesGrid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1/-1;">
+            <div class="empty-state-icon">🔍</div>
+            <p>No episodes found matching your criteria</p>
+          </div>
+        `;
+        return;
+      }
+
+      matchedEpisodes.forEach(({ episode, matches }, idx) => {
+        const card = document.createElement('div');
+        card.className = 'episode-card';
+        card.style.animationDelay = `${0.05 * idx}s`;
+        card.onclick = () => showEpisodeDetail(episode);
+
+        // Get summary
+        const taskMatch = episode.prompt.match(/Task Description:\n(.+?)(?:\n\n|Current terminal state:)/s);
+        let summary = '';
+
+        if (taskMatch) {
+          summary = taskMatch[1].substring(0, 180) + '...';
+        } else {
+          try {
+            const jsonMatch = episode.response.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]);
+              summary = parsed.analysis ? parsed.analysis.substring(0, 180) + '...' :
+                        episode.taskComplete ? 'Task marked as complete' : 'Continuation episode';
+            }
+          } catch (e) {
+            summary = 'Continuation episode';
+          }
+        }
+
+        const commandCount = episode.commands.length;
+
+        let matchTags = '';
+        if (matches.length > 0) {
+          const cmdMatches = matches.filter(m => m.type === 'command');
+          const promptMatches = matches.filter(m => m.type === 'prompt');
+          const respMatches = matches.filter(m => m.type === 'response');
+
+          if (cmdMatches.length > 0) {
+            matchTags += `<span class="tag match">📍 ${cmdMatches.length} cmd match${cmdMatches.length > 1 ? 'es' : ''}</span>`;
+          }
+          if (promptMatches.length > 0) {
+            matchTags += `<span class="tag match">📍 prompt</span>`;
+          }
+          if (respMatches.length > 0) {
+            matchTags += `<span class="tag match">📍 response</span>`;
+          }
+        }
+
+        card.innerHTML = `
+          <div class="episode-header">
+            <div class="episode-number">Episode ${episode.number}</div>
+            <div class="episode-meta">${commandCount} cmd${commandCount !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="episode-body">
+            <div class="episode-summary">${summary}</div>
+            <div class="episode-tags">
+              ${episode.taskComplete ? '<span class="tag complete">✓ Complete</span>' : ''}
+              ${commandCount > 0 ?
+                episode.commands.slice(0, 2).map(cmd => {
+                  const preview = cmd.text.split('\n')[0].substring(0, 18);
+                  return `<span class="tag">${escapeHtml(preview)}</span>`;
+                }).join('') :
+                '<span class="tag success">No commands</span>'
+              }
+              ${commandCount > 2 ? `<span class="tag">+${commandCount - 2}</span>` : ''}
+              ${matchTags}
+            </div>
+          </div>
+        `;
+
+        episodesGrid.appendChild(card);
+      });
+    }
+
+    function formatTimestamp(ts) {
+      if (!ts) return '';
+      try {
+        const date = new Date(ts);
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function showEpisodeDetail(episode) {
+      let analysis = '';
+      let plan = '';
+      let responseJson = '';
+
+      try {
+        const jsonMatch = episode.response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          analysis = parsed.analysis || '';
+          plan = parsed.plan || '';
+          responseJson = JSON.stringify(parsed, null, 2);
+        }
+      } catch (e) {}
+
+      // Clean prompt - remove terminal state bloat
+      let cleanPrompt = episode.prompt;
+      const terminalStateMatch = cleanPrompt.match(/Current terminal state:/);
+      if (terminalStateMatch) {
+        const beforeTerminal = cleanPrompt.substring(0, terminalStateMatch.index);
+        cleanPrompt = beforeTerminal + '\n\n[Terminal state truncated for readability]';
+      }
+
+      const testResultsHtml = `
+        <div class="collapsible-container">
+          <div class="collapsible-header" onclick="toggleCollapsible('testResults')">
+            <div class="collapsible-title">
+              Test Results
+              <span class="badge-count">${Object.keys(currentTrial.results.parser_results).length}</span>
+            </div>
+            <span class="collapsible-toggle expanded" id="testResultsToggle">▼</span>
+          </div>
+          <div class="collapsible-content expanded" id="testResults">
+            <div class="test-grid">
+              ${Object.entries(currentTrial.results.parser_results).map(([test, status]) => `
+                <div class="test-item ${status}">
+                  <span class="test-name">${test}</span>
+                  <span class="test-status">${status}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      detailPanel.innerHTML = `
+        <div class="detail-header">
+          <div class="detail-title">
+            Episode ${episode.number}
+            ${episode.timestamp ? `<span class="episode-timestamp">${formatTimestamp(episode.timestamp)}</span>` : ''}
+          </div>
+          <button class="close-btn" onclick="closeDetail()">Close</button>
+        </div>
+
+        <div class="episode-search-bar">
+          <div class="episode-search-box">
+            <span class="episode-search-icon">🔍</span>
+            <input
+              type="text"
+              class="episode-search-input"
+              id="episodeSearchInput"
+              placeholder="Search within this episode..."
+            >
+          </div>
+          <div class="episode-search-controls">
+            <span class="match-count" id="matchCount"></span>
+            <button class="nav-arrow" id="prevMatch" onclick="navigateMatch(-1)" title="Previous match">◄</button>
+            <button class="nav-arrow" id="nextMatch" onclick="navigateMatch(1)" title="Next match">►</button>
+          </div>
+        </div>
+
+        <div class="detail-content" id="detailContent">
+          ${episode.taskComplete ? `
+            <div class="completion-banner">
+              <span style="font-size: 2rem;">✓</span>
+              <span>Task Completed</span>
+            </div>
+          ` : ''}
+
+          ${analysis ? `
+            <div class="detail-section">
+              <h3>Analysis</h3>
+              <div class="code-block">${highlightMatch(analysis, episodeSearchQuery)}</div>
+            </div>
+          ` : ''}
+
+          ${plan ? `
+            <div class="detail-section">
+              <h3>Plan</h3>
+              <div class="code-block">${highlightMatch(plan, episodeSearchQuery)}</div>
+            </div>
+          ` : ''}
+
+          <div class="detail-section">
+            <h3>Commands <span class="badge-count">${episode.commands.length}</span></h3>
+            ${episode.commands.length > 0 ? `
+              <div class="commands-list">
+                ${episode.commands.map((cmd, idx) => {
+                  // Trim trailing newlines and check if truly multi-line
+                  const trimmedText = cmd.text.trimEnd();
+                  const lines = trimmedText.split('\n').filter(line => line.trim().length > 0);
+                  const isMultiLine = lines.length > 1;
+                  const firstLine = cmd.text.split('\n')[0];
+                  const hasMatch = episodeSearchQuery && cmd.text.toLowerCase().includes(episodeSearchQuery);
+
+                  if (isMultiLine) {
+                    // Multi-line command - make it expandable
+                    const preview = firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine;
+                    return `
+                      <div class="command-item">
+                        <div class="command-header expandable" onclick="toggleCommand(${idx})">
+                          <div class="command-left">
+                            <span class="command-number">#${idx + 1}</span>
+                            ${cmd.timestamp ? `<span class="command-timestamp">${formatTimestamp(cmd.timestamp)}</span>` : ''}
+                            <span class="command-text preview">${escapeHtml(preview)}</span>
+                            ${hasMatch ? '<span class="match-indicator">MATCH</span>' : ''}
+                          </div>
+                          <span class="command-expand-icon" id="cmdIcon${idx}">▼</span>
+                        </div>
+                        <div class="command-full" id="cmdFull${idx}">
+                          <pre>${highlightMatch(cmd.text, episodeSearchQuery)}</pre>
+                        </div>
+                      </div>
+                    `;
+                  } else {
+                    // Single-line command - just show it
+                    return `
+                      <div class="command-item single-line">
+                        <div class="command-header">
+                          <div class="command-left">
+                            <span class="command-number">#${idx + 1}</span>
+                            ${cmd.timestamp ? `<span class="command-timestamp">${formatTimestamp(cmd.timestamp)}</span>` : ''}
+                            <span class="command-text">${highlightMatch(cmd.text, episodeSearchQuery)}</span>
+                            ${hasMatch ? '<span class="match-indicator">MATCH</span>' : ''}
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                  }
+                }).join('')}
+              </div>
+            ` : `
+              <div class="empty-state">
+                <div class="empty-state-icon">📝</div>
+                <p>No commands executed</p>
+              </div>
+            `}
+          </div>
+
+          <div class="detail-section">
+            <h3>Full Prompt</h3>
+            <div class="code-block">
+              <pre>${highlightMatch(cleanPrompt, episodeSearchQuery)}</pre>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h3>Full Response</h3>
+            <div class="collapsible-container">
+              <div class="collapsible-header" onclick="toggleCollapsible('fullResponse')">
+                <div class="collapsible-title">JSON Response</div>
+                <span class="collapsible-toggle" id="fullResponseToggle">▼</span>
+              </div>
+              <div class="collapsible-content" id="fullResponse">
+                <div class="code-block">
+                  <pre>${highlightMatch(responseJson || episode.response, episodeSearchQuery)}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h3>Test Results</h3>
+            ${testResultsHtml}
+          </div>
+        </div>
+      `;
+
+      // Add episode search listener
+      const episodeSearchInput = document.getElementById('episodeSearchInput');
+      episodeSearchInput.addEventListener('input', (e) => {
+        episodeSearchQuery = e.target.value.toLowerCase();
+        currentMatchIndex = 0; // Reset to first match
+        refreshEpisodeContent(episode);
+      });
+
+      // Add keyboard navigation for left/right arrows
+      episodeSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          navigateMatch(-1); // Previous match
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          navigateMatch(1); // Next match
+        }
+      });
+
+      detailPanel.classList.add('active');
+      detailPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Initial match navigation update
+      setTimeout(() => updateMatchNavigation(), 100);
+    }
+
+    function refreshEpisodeContent(episode) {
+      // Re-render just the detail content with new search highlighting
+      const detailContent = document.getElementById('detailContent');
+      if (!detailContent) return;
+
+      let analysis = '';
+      let plan = '';
+      let responseJson = '';
+
+      try {
+        const jsonMatch = episode.response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          analysis = parsed.analysis || '';
+          plan = parsed.plan || '';
+          responseJson = JSON.stringify(parsed, null, 2);
+        }
+      } catch (e) {}
+
+      let cleanPrompt = episode.prompt;
+      const terminalStateMatch = cleanPrompt.match(/Current terminal state:/);
+      if (terminalStateMatch) {
+        const beforeTerminal = cleanPrompt.substring(0, terminalStateMatch.index);
+        cleanPrompt = beforeTerminal + '\n\n[Terminal state truncated for readability]';
+      }
+
+      const testResultsHtml = `
+        <div class="collapsible-container">
+          <div class="collapsible-header" onclick="toggleCollapsible('testResults')">
+            <div class="collapsible-title">
+              Test Results
+              <span class="badge-count">${Object.keys(currentTrial.results.parser_results).length}</span>
+            </div>
+            <span class="collapsible-toggle expanded" id="testResultsToggle">▼</span>
+          </div>
+          <div class="collapsible-content expanded" id="testResults">
+            <div class="test-grid">
+              ${Object.entries(currentTrial.results.parser_results).map(([test, status]) => `
+                <div class="test-item ${status}">
+                  <span class="test-name">${test}</span>
+                  <span class="test-status">${status}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+
+      detailContent.innerHTML = `
+        ${episode.taskComplete ? `
+          <div class="completion-banner">
+            <span style="font-size: 2rem;">✓</span>
+            <span>Task Completed</span>
+          </div>
+        ` : ''}
+
+        ${analysis ? `
+          <div class="detail-section">
+            <h3>Analysis</h3>
+            <div class="code-block">${highlightMatch(analysis, episodeSearchQuery)}</div>
+          </div>
+        ` : ''}
+
+        ${plan ? `
+          <div class="detail-section">
+            <h3>Plan</h3>
+            <div class="code-block">${highlightMatch(plan, episodeSearchQuery)}</div>
+          </div>
+        ` : ''}
+
+        <div class="detail-section">
+          <h3>Commands <span class="badge-count">${episode.commands.length}</span></h3>
+          ${episode.commands.length > 0 ? `
+            <div class="commands-list">
+              ${episode.commands.map((cmd, idx) => {
+                // Trim trailing newlines and check if truly multi-line
+                const trimmedText = cmd.text.trimEnd();
+                const lines = trimmedText.split('\n').filter(line => line.trim().length > 0);
+                const isMultiLine = lines.length > 1;
+                const firstLine = cmd.text.split('\n')[0];
+                const hasMatch = episodeSearchQuery && cmd.text.toLowerCase().includes(episodeSearchQuery);
+
+                if (isMultiLine) {
+                  const preview = firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine;
+                  return `
+                    <div class="command-item">
+                      <div class="command-header expandable" onclick="toggleCommand(${idx})">
+                        <div class="command-left">
+                          <span class="command-number">#${idx + 1}</span>
+                          ${cmd.timestamp ? `<span class="command-timestamp">${formatTimestamp(cmd.timestamp)}</span>` : ''}
+                          <span class="command-text preview">${escapeHtml(preview)}</span>
+                          ${hasMatch ? '<span class="match-indicator">MATCH</span>' : ''}
+                        </div>
+                        <span class="command-expand-icon" id="cmdIcon${idx}">▼</span>
+                      </div>
+                      <div class="command-full" id="cmdFull${idx}">
+                        <pre>${highlightMatch(cmd.text, episodeSearchQuery)}</pre>
+                      </div>
+                    </div>
+                  `;
+                } else {
+                  return `
+                    <div class="command-item single-line">
+                      <div class="command-header">
+                        <div class="command-left">
+                          <span class="command-number">#${idx + 1}</span>
+                          ${cmd.timestamp ? `<span class="command-timestamp">${formatTimestamp(cmd.timestamp)}</span>` : ''}
+                          <span class="command-text">${highlightMatch(cmd.text, episodeSearchQuery)}</span>
+                          ${hasMatch ? '<span class="match-indicator">MATCH</span>' : ''}
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }
+              }).join('')}
+            </div>
+          ` : `
+            <div class="empty-state">
+              <div class="empty-state-icon">📝</div>
+              <p>No commands executed</p>
+            </div>
+          `}
+        </div>
+
+        <div class="detail-section">
+          <h3>Full Prompt</h3>
+          <div class="code-block">
+            <pre>${highlightMatch(cleanPrompt, episodeSearchQuery)}</pre>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>Full Response</h3>
+          <div class="collapsible-container">
+            <div class="collapsible-header" onclick="toggleCollapsible('fullResponse')">
+              <div class="collapsible-title">JSON Response</div>
+              <span class="collapsible-toggle" id="fullResponseToggle">▼</span>
+            </div>
+            <div class="collapsible-content" id="fullResponse">
+              <div class="code-block">
+                <pre>${highlightMatch(responseJson || episode.response, episodeSearchQuery)}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>Test Results</h3>
+          ${testResultsHtml}
+        </div>
+      `;
+
+      // Update match navigation after re-rendering
+      setTimeout(() => updateMatchNavigation(), 100);
+    }
+
+    function toggleCommand(idx) {
+      const fullEl = document.getElementById(`cmdFull${idx}`);
+      const iconEl = document.getElementById(`cmdIcon${idx}`);
+      fullEl.classList.toggle('expanded');
+      iconEl.classList.toggle('expanded');
+    }
+
+    function toggleCollapsible(id) {
+      const content = document.getElementById(id);
+      const toggle = document.getElementById(id + 'Toggle');
+      content.classList.toggle('expanded');
+      toggle.classList.toggle('expanded');
+    }
+
+    function closeDetail() {
+      detailPanel.classList.remove('active');
+      episodeSearchQuery = '';
+      currentMatchIndex = 0;
+      totalMatches = 0;
+      matchElements = [];
+    }
+
+    function updateMatchNavigation() {
+      // Find all highlighted matches in the detail panel
+      const detailContent = document.getElementById('detailContent');
+      if (!detailContent) return;
+
+      matchElements = Array.from(detailContent.querySelectorAll('.search-highlight'));
+      totalMatches = matchElements.length;
+
+      // Update match count display
+      const matchCount = document.getElementById('matchCount');
+      const prevBtn = document.getElementById('prevMatch');
+      const nextBtn = document.getElementById('nextMatch');
+
+      if (totalMatches === 0) {
+        matchCount.textContent = '';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+        return;
+      }
+
+      matchCount.textContent = `${currentMatchIndex + 1} of ${totalMatches}`;
+
+      // Enable/disable navigation buttons
+      if (prevBtn) prevBtn.disabled = (currentMatchIndex === 0);
+      if (nextBtn) nextBtn.disabled = (currentMatchIndex === totalMatches - 1);
+
+      // Highlight current match differently
+      matchElements.forEach((el, idx) => {
+        if (idx === currentMatchIndex) {
+          el.classList.remove('search-highlight');
+          el.classList.add('search-highlight-current');
+          // Scroll to current match
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          el.classList.remove('search-highlight-current');
+          el.classList.add('search-highlight');
+        }
+      });
+    }
+
+    function navigateMatch(direction) {
+      if (totalMatches === 0) return;
+
+      currentMatchIndex = Math.max(0, Math.min(totalMatches - 1, currentMatchIndex + direction));
+      updateMatchNavigation();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showMainContent() {
+      // FORCE remove loading overlay as failsafe
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.remove();
+      }
+
+      uploadSection.style.display = 'none';
+      mainContent.classList.add('active');
+    }
+
+    function showLoading() {
+      const overlay = document.createElement('div');
+      overlay.className = 'loading-overlay';
+      overlay.id = 'loadingOverlay';
+
+      // Always use terminal style
+      overlay.innerHTML = `
+        <div class="loading-content" style="max-width: 900px; width: 90vw;">
+          <div style="background: #0a0a0a; border-radius: 12px; border: 1px solid var(--glass-border); padding: 1.5rem; font-family: 'JetBrains Mono', monospace; height: 500px; display: flex; flex-direction: column;">
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f;"></div>
+              <div style="flex: 1; text-align: center; font-size: 0.75rem; color: var(--text-muted);">harbor-trace-downloader@1.0.0</div>
+            </div>
+            <div id="terminalOutput" style="flex: 1; font-size: 0.8125rem; line-height: 1.6; overflow-y: auto;"></div>
+            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+              <span style="color: var(--green);">$</span>
+              <span id="terminalCursor" style="color: var(--text-muted);">_</span>
+            </div>
+          </div>
+          <div class="loading-progress" style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">0 files downloaded</div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      const terminalOutput = overlay.querySelector('#terminalOutput');
+      const messages = [
+        { type: 'info', text: '[*] Initializing download agent...' },
+        { type: 'success', text: '[✓] Connected to GitHub API' },
+        { type: 'info', text: '[*] Fetching repository structure...' }
+      ];
+
+      let msgIndex = 0;
+      overlay.terminalInterval = setInterval(() => {
+        if (msgIndex < messages.length) {
+          const msg = messages[msgIndex];
+          const color = msg.type === 'success' ? 'var(--green)' : msg.type === 'error' ? 'var(--red)' : 'var(--cyan)';
+          terminalOutput.innerHTML += `<div style="color: ${color}; margin-bottom: 0.25rem;">${msg.text}</div>`;
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
+          msgIndex++;
+        }
+      }, 400);
+
+      // Blinking cursor
+      overlay.cursorInterval = setInterval(() => {
+        const cursor = overlay.querySelector('#terminalCursor');
+        if (cursor) cursor.style.opacity = cursor.style.opacity === '0' ? '1' : '0';
+      }, 500);
+
+      // Store reference for adding download logs
+      window.terminalLog = (message, type = 'download') => {
+        if (terminalOutput) {
+          const color = type === 'success' ? 'var(--green)' :
+                       type === 'error' ? 'var(--red)' :
+                       type === 'download' ? 'var(--purple-light)' :
+                       'var(--text-secondary)';
+          terminalOutput.innerHTML += `<div style="color: ${color}; margin-bottom: 0.25rem;">${message}</div>`;
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+      };
+    }
+
+    function showFactsLoading(overlay) {
+      const facts = [
+        { emoji: "🚀", text: "The first computer bug was an actual moth found in a Harvard Mark II computer in 1947!" },
+        { emoji: "💾", text: "The first 1GB hard drive weighed over 500 pounds and cost $40,000 in 1980!" },
+        { emoji: "🎮", text: "The average video game takes 2-3 years to develop with teams of 50-100 people!" },
+        { emoji: "🔐", text: "The most common password is still '123456'. Please don't use it!" },
+        { emoji: "⚡", text: "Moore's Law predicts computer power doubles every 2 years. We're still on track!" },
+        { emoji: "🌐", text: "There are over 1.8 billion websites, but only 200 million are active!" },
+        { emoji: "🤖", text: "The term 'robot' comes from the Czech word 'robota' meaning forced labor!" },
+        { emoji: "💻", text: "The first computer mouse was made of wood and had only one button!" },
+        { emoji: "📱", text: "Your smartphone has more computing power than NASA had in 1969!" },
+        { emoji: "🎯", text: "The first computer programmer was Ada Lovelace in the 1840s!" }
+      ];
+
+      let currentFactIndex = 0;
+      const randomStart = Math.floor(Math.random() * facts.length);
+      currentFactIndex = randomStart;
+
+      overlay.innerHTML = `
+        <div class="loading-content" style="max-width: 600px;">
+          <div class="loading-spinner"></div>
+          <div class="loading-text" style="font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem;">Downloading files...</div>
+          <div class="loading-progress" style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">0 files downloaded</div>
+          <div style="padding: 1.5rem; background: rgba(168, 85, 247, 0.1); border-radius: 12px; border: 1px solid rgba(168, 85, 247, 0.2); min-height: 120px;">
+            <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">💡 Did you know?</div>
+            <div class="rotating-fact" style="font-size: 1.125rem; color: var(--purple-light); line-height: 1.6; font-weight: 500;">
+              <span class="fact-emoji">${facts[currentFactIndex].emoji}</span>
+              <span class="fact-text">${facts[currentFactIndex].text}</span>
+            </div>
+            <div style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+              <span class="fact-counter">${currentFactIndex + 1}/${facts.length}</span> • Auto-rotating every 6s
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Rotate facts every 6 seconds
+      overlay.factInterval = setInterval(() => {
+        currentFactIndex = (currentFactIndex + 1) % facts.length;
+        const factEmoji = overlay.querySelector('.fact-emoji');
+        const factText = overlay.querySelector('.fact-text');
+        const factCounter = overlay.querySelector('.fact-counter');
+
+        if (factEmoji && factText && factCounter) {
+          factEmoji.style.opacity = '0';
+          factText.style.opacity = '0';
+
+          setTimeout(() => {
+            factEmoji.textContent = facts[currentFactIndex].emoji;
+            factText.textContent = facts[currentFactIndex].text;
+            factCounter.textContent = `${currentFactIndex + 1}/${facts.length}`;
+            factEmoji.style.transition = 'opacity 0.5s';
+            factText.style.transition = 'opacity 0.5s';
+            factEmoji.style.opacity = '1';
+            factText.style.opacity = '1';
+          }, 300);
+        }
+      }, 6000);
+    }
+
+    function showTerminalLoading(overlay) {
+      overlay.innerHTML = `
+        <div class="loading-content" style="max-width: 700px;">
+          <div style="background: #0a0a0a; border-radius: 12px; border: 1px solid var(--glass-border); padding: 1.5rem; font-family: 'JetBrains Mono', monospace; min-height: 400px;">
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f;"></div>
+            </div>
+            <div id="terminalOutput" style="font-size: 0.8125rem; line-height: 1.6; max-height: 350px; overflow-y: auto;"></div>
+            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+              <span style="color: var(--green);">$</span>
+              <span id="terminalCursor" style="color: var(--text-muted);">_</span>
+            </div>
+          </div>
+          <div class="loading-progress" style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">0 files downloaded</div>
+        </div>
+      `;
+
+      const messages = [
+        { type: 'info', text: '[*] Initializing download agent...' },
+        { type: 'success', text: '[+] Connected to GitHub API' },
+        { type: 'info', text: '[*] Fetching repository structure...' },
+        { type: 'success', text: '[+] Found 5 trial directories' },
+        { type: 'info', text: '[*] Starting recursive download...' }
+      ];
+
+      const terminalOutput = overlay.querySelector('#terminalOutput');
+      let msgIndex = 0;
+
+      overlay.terminalInterval = setInterval(() => {
+        if (msgIndex < messages.length) {
+          const msg = messages[msgIndex];
+          const color = msg.type === 'success' ? 'var(--green)' : msg.type === 'error' ? 'var(--red)' : 'var(--cyan)';
+          terminalOutput.innerHTML += `<div style="color: ${color}; margin-bottom: 0.25rem;">${msg.text}</div>`;
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
+          msgIndex++;
+        }
+      }, 800);
+
+      // Blinking cursor
+      overlay.cursorInterval = setInterval(() => {
+        const cursor = overlay.querySelector('#terminalCursor');
+        if (cursor) cursor.style.opacity = cursor.style.opacity === '0' ? '1' : '0';
+      }, 500);
+    }
+
+    function showRaceLoading(overlay) {
+      const agents = [
+        { name: 'GPT-4', color: '#10b981', emoji: '🤖', speed: 1 },
+        { name: 'Claude', color: '#a855f7', emoji: '🧠', speed: 0.95 },
+        { name: 'Gemini', color: '#3b82f6', emoji: '✨', speed: 1.05 }
+      ];
+
+      overlay.innerHTML = `
+        <div class="loading-content" style="max-width: 700px;">
+          <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">🏁 Download Race!</div>
+            <div style="font-size: 0.875rem; color: var(--text-muted);">Which agent will download the most files?</div>
+          </div>
+          <div id="raceTrack" style="display: flex; flex-direction: column; gap: 1.5rem;"></div>
+          <div class="loading-progress" style="text-align: center; margin-top: 2rem; font-size: 0.875rem; color: var(--text-muted);">0 files downloaded</div>
+        </div>
+      `;
+
+      const raceTrack = overlay.querySelector('#raceTrack');
+      agents.forEach((agent, idx) => {
+        const lane = document.createElement('div');
+        lane.style.cssText = 'position: relative; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--glass-border);';
+        lane.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="font-weight: 600; color: ${agent.color};">${agent.emoji} ${agent.name}</div>
+            <div id="agent${idx}Progress" style="font-size: 0.875rem; color: var(--text-muted);">0%</div>
+          </div>
+          <div style="background: rgba(255,255,255,0.05); height: 24px; border-radius: 12px; overflow: hidden; position: relative;">
+            <div id="agent${idx}Bar" style="height: 100%; background: linear-gradient(90deg, ${agent.color}, ${agent.color}dd); width: 0%; transition: width 0.3s; border-radius: 12px; box-shadow: 0 0 20px ${agent.color}88;"></div>
+          </div>
+        `;
+        raceTrack.appendChild(lane);
+      });
+
+      let progress = 0;
+      overlay.raceInterval = setInterval(() => {
+        agents.forEach((agent, idx) => {
+          const randomBoost = Math.random() * 5 * agent.speed;
+          const currentProgress = parseFloat(document.getElementById(`agent${idx}Bar`).style.width || '0');
+          const newProgress = Math.min(100, currentProgress + randomBoost);
+
+          document.getElementById(`agent${idx}Bar`).style.width = newProgress + '%';
+          document.getElementById(`agent${idx}Progress`).textContent = Math.round(newProgress) + '%';
+
+          if (newProgress >= 100) {
+            document.getElementById(`agent${idx}Progress`).innerHTML = '👑 Winner!';
+          }
+        });
+        progress++;
+      }, 200);
+    }
+
+    function showTreeLoading(overlay) {
+      overlay.innerHTML = `
+        <div class="loading-content" style="max-width: 700px;">
+          <div style="background: rgba(0,0,0,0.4); border-radius: 12px; border: 1px solid var(--glass-border); padding: 1.5rem; min-height: 400px;">
+            <div style="font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--purple-light);">📁 Repository Structure</div>
+            <div id="fileTree" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8125rem; line-height: 1.8; max-height: 350px; overflow-y: auto;"></div>
+          </div>
+          <div class="loading-progress" style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">0 files downloaded</div>
+        </div>
+      `;
+
+      const fileTree = overlay.querySelector('#fileTree');
+      const treeLines = [];
+
+      overlay.addTreeLine = (line) => {
+        treeLines.push(line);
+        const div = document.createElement('div');
+        div.innerHTML = line;
+        div.style.opacity = '0';
+        div.style.transform = 'translateX(-10px)';
+        div.style.transition = 'all 0.3s';
+        fileTree.appendChild(div);
+
+        setTimeout(() => {
+          div.style.opacity = '1';
+          div.style.transform = 'translateX(0)';
+        }, 10);
+
+        fileTree.scrollTop = fileTree.scrollHeight;
+      };
+
+      overlay.addTreeLine('<span style="color: var(--cyan);">full-check-2025-12-14/</span>');
+      setTimeout(() => overlay.addTreeLine('├── <span style="color: var(--blue);">tb-run-small/</span>'), 400);
+      setTimeout(() => overlay.addTreeLine('│   ├── <span style="color: var(--green);">results.json</span> ✓'), 800);
+      setTimeout(() => overlay.addTreeLine('│   ├── <span style="color: var(--purple);">agent-logs/</span>'), 1200);
+      setTimeout(() => overlay.addTreeLine('│   │   ├── <span style="color: var(--text-secondary);">episode-1/</span>'), 1600);
+      setTimeout(() => overlay.addTreeLine('│   │   │   ├── prompt.txt ✓'), 2000);
+      setTimeout(() => overlay.addTreeLine('│   │   │   ├── response.txt ✓'), 2200);
+      setTimeout(() => overlay.addTreeLine('│   │   │   └── debug.json ✓'), 2400);
+    }
+
+    function hideLoading() {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        // Clear all possible intervals from different loading modes
+        if (overlay.factInterval) clearInterval(overlay.factInterval);
+        if (overlay.terminalInterval) clearInterval(overlay.terminalInterval);
+        if (overlay.cursorInterval) clearInterval(overlay.cursorInterval);
+        if (overlay.raceInterval) clearInterval(overlay.raceInterval);
+        overlay.remove();
+      }
+    }
+
+    // Mouse tracking for cards
+    document.addEventListener('mousemove', (e) => {
+      document.querySelectorAll('.episode-card').forEach(card => {
+        const rect = card.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        card.style.setProperty('--mouse-x', `${x}%`);
+        card.style.setProperty('--mouse-y', `${y}%`);
+      });
+    });
+
+    // Global error handler
+    window.addEventListener('error', (e) => {
+      console.error('[GLOBAL ERROR]', e.error || e.message);
+      console.error('[STACK]', e.error?.stack);
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('[UNHANDLED PROMISE REJECTION]', e.reason);
+    });
+
+    console.log('[TRACE] Script initialization complete');
+  </script>
+</body>
+</html>
