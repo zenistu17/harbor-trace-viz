@@ -2707,20 +2707,23 @@
       // Always use terminal style
       overlay.innerHTML = `
         <div class="loading-content" style="max-width: 900px; width: 90vw;">
-          <div style="background: #0a0a0a; border-radius: 12px; border: 1px solid var(--glass-border); padding: 1.5rem; font-family: 'JetBrains Mono', monospace; height: 500px; display: flex; flex-direction: column;">
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <div style="background: #0a0a0a; border-radius: 12px; border: 1px solid var(--glass-border); padding: 1.5rem; font-family: 'JetBrains Mono', monospace; height: 550px; display: flex; flex-direction: column;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
               <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56;"></div>
               <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
               <div style="width: 12px; height: 12px; border-radius: 50%; background: #27c93f;"></div>
-              <div style="flex: 1; text-align: center; font-size: 0.75rem; color: var(--text-muted);">harbor-trace-downloader@1.0.0</div>
+              <div style="flex: 1; text-align: center; font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em;">harbor-trace-downloader@1.0.0</div>
+              <div style="width: 36px;"></div>
             </div>
-            <div id="terminalOutput" style="flex: 1; font-size: 0.8125rem; line-height: 1.6; overflow-y: auto;"></div>
-            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
-              <span style="color: var(--green);">$</span>
-              <span id="terminalCursor" style="color: var(--text-muted);">_</span>
+            <div id="terminalOutput" style="flex: 1; font-size: 0.8125rem; line-height: 1.6; overflow-y: auto; padding-right: 0.5rem;"></div>
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+              <div class="loading-progress" style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.75rem;">📊 0 files downloaded</div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--green);">$</span>
+                <span id="terminalCursor" style="color: var(--text-muted);">_</span>
+              </div>
             </div>
           </div>
-          <div class="loading-progress" style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">0 files downloaded</div>
         </div>
       `;
 
@@ -2732,6 +2735,9 @@
         { type: 'success', text: '[✓] Connected to GitHub API' },
         { type: 'info', text: '[*] Fetching repository structure...' }
       ];
+
+      // Store global reference to terminal output
+      window._terminalOutput = terminalOutput;
 
       let msgIndex = 0;
       overlay.terminalInterval = setInterval(() => {
@@ -2752,13 +2758,14 @@
 
       // Store reference for adding download logs
       window.terminalLog = (message, type = 'download') => {
-        if (terminalOutput) {
+        const output = window._terminalOutput || document.getElementById('terminalOutput');
+        if (output) {
           const color = type === 'success' ? 'var(--green)' :
                        type === 'error' ? 'var(--red)' :
                        type === 'download' ? 'var(--purple-light)' :
                        'var(--text-secondary)';
-          terminalOutput.innerHTML += `<div style="color: ${color}; margin-bottom: 0.25rem;">${message}</div>`;
-          terminalOutput.scrollTop = terminalOutput.scrollHeight;
+          output.innerHTML += `<div style="color: ${color}; margin-bottom: 0.25rem;">${message}</div>`;
+          output.scrollTop = output.scrollHeight;
         }
       };
     }
