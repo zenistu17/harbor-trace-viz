@@ -1732,10 +1732,22 @@
               content = await contentResponse.text();
               globalDownloadCount++;
 
+              // Get relative path from full-check folder
+              const pathParts = item.path.split('/');
+              const fullCheckIndex = pathParts.findIndex(p => p.startsWith('full-check-'));
+              const relativePath = fullCheckIndex >= 0
+                ? pathParts.slice(fullCheckIndex + 1).join('/')
+                : item.path;
+
+              // Update terminal log
+              if (window.terminalLog) {
+                window.terminalLog(`[↓] ${relativePath}`, 'download');
+              }
+
               // Update loading progress
               const loadingProgress = document.querySelector('.loading-progress');
               if (loadingProgress) {
-                loadingProgress.textContent = `${globalDownloadCount} files downloaded`;
+                loadingProgress.textContent = `📊 ${globalDownloadCount} files downloaded`;
               }
 
               break; // Success, exit retry loop
