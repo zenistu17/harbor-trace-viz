@@ -1657,6 +1657,15 @@
         }
 
         console.log(`Downloaded ${files.length} files`);
+
+        // Add completion message to terminal
+        if (window.terminalLog) {
+          window.terminalLog(`[✓] Download complete: ${files.length} files`, 'success');
+          if (files.length === 0) {
+            window.terminalLog(`[!] No trace files found in this full-check run`, 'error');
+          }
+        }
+
         await handleFiles(files);
       } catch (error) {
         hideLoading();
@@ -2013,7 +2022,12 @@
       console.log('[HANDLE] hideLoading() returned');
 
       if (allTrials.length === 0) {
-        alert('No valid trials found. Please upload a Harbor trace folder.');
+        const resultsCount = resultFiles.length;
+        if (resultsCount === 0) {
+          alert('No trace files found. This full-check run may not have completed or may not contain any results.json files.');
+        } else {
+          alert(`Found ${resultsCount} results.json file(s) but could not parse any valid traces. The files may be corrupted or in an unexpected format.`);
+        }
         return;
       }
 
